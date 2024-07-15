@@ -77,6 +77,7 @@ import os
 from typing import Optional
 
 import click
+import webbrowser
 
 import papis
 import papis.api
@@ -143,6 +144,9 @@ def run(document: papis.document.Document,
                     papis.config.set("opentool", opener)
         files = document.get_files()
         if not files:
+            if "url" in document.keys():
+                webbrowser.open(document["url"], new=2)
+
             logger.error("The chosen document has no files attached: '%s'.",
                          papis.document.describe(document))
             return

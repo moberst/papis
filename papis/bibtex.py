@@ -16,6 +16,9 @@ logger = papis.logging.get_logger(__name__)
 # NOTE: see the BibLaTeX docs for an up to date list of types and keys:
 #   https://ctan.org/pkg/biblatex?lang=en
 
+# NOTE: Added to prevent unicode-to-latex conversion on \url{} strings
+allowed_unicode_list = ["howpublished", "url"]
+
 bibtex_types: FrozenSet[str] = frozenset([
     # regular types (Section 2.1.1)
     "article",
@@ -299,12 +302,17 @@ def ref_cleanup(ref: str) -> str:
     """
     import slugify
     allowed_characters = r"([^a-zA-Z0-9._]+|(?<!\\)[._])"
-    return string.capwords(str(slugify.slugify(
+    # Custom code here, I'm trying to keep the last -
+    cap_string = string.capwords(str(slugify.slugify(
         ref,
         lowercase=False,
         word_boundary=False,
         separator=" ",
-        regex_pattern=allowed_characters))).replace(" ", "")
+        regex_pattern=allowed_characters)))
+    space_ct = cap_string.count(" ")
+    cap_string = cap_string.replace(" ", "", space_ct-1)
+    cap_string = cap_string.replace(" ", "-")
+    return cap_string
 
 
 def create_reference(doc: Dict[str, Any], force: bool = False) -> str:
@@ -402,7 +410,7 @@ def to_bibtex(document: papis.document.Document, *, indent: int = 2) -> str:
 
             bib_value = string_to_latex(bib_value)
 
-        if not supports_unicode:
+        if not supports_unicode and bib_key not in allowed_unicode_list:
             bib_value = unicode_to_latex(bib_value)
 
         lines.append("{} = {{{}}}".format(bib_key, bib_value))

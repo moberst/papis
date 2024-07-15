@@ -309,6 +309,13 @@ def run(paths: List[str],
     ]
 
     tmp_document = papis.document.Document(temp_dir)
+    db = papis.database.get()
+
+    # Create papis_id
+    # NOTE: This enables the usage of papis_id in the reference string
+    db.maybe_compute_id(tmp_document)
+    key_name = papis.id.key_name()
+    data[key_name] = tmp_document[key_name]
 
     # reference building
     # NOTE: this needs to go before any papis.format calls, so that those can
