@@ -256,13 +256,21 @@ def run(paths: List[str],
     in_documents_paths = paths
     temp_dir = tempfile.mkdtemp()
     tmp_document = papis.document.Document(folder=temp_dir, data=data)
-    papis.database.get().maybe_compute_id(tmp_document)
+    key_name = papis.id.key_name()
+    if key_name not in tmp_document:
+        while True:
+            new_id = papis.id.compute_an_id(tmp_document)
+            other_docs = papis.database.get().query_dict({key_name: new_id})
+            if not other_docs:
+                break
+
+        data[key_name] = new_id
 
     # reference building
     # NOTE: this needs to go before any papis.format calls, so that those can
     # potentially use the 'ref' key in the formatted strings.
     if "ref" not in data:
-        new_ref = papis.bibtex.create_reference(data)
+        new_ref = papis.bibtex.create_reference(data, force=True)
         if new_ref:
             logger.info("Created reference '%s'.", new_ref)
             tmp_document["ref"] = new_ref

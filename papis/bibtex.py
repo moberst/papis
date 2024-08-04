@@ -5,6 +5,7 @@ the `manual`_).
 .. _manual: https://ctan.org/pkg/biblatex?lang=en
 .. _biblatex_software: https://ctan.org/pkg/biblatex-software?lang=en
 """
+
 import os
 import string
 from typing import Optional, List, Dict, Any, Iterator
@@ -21,26 +22,41 @@ import papis.logging
 logger = papis.logging.get_logger(__name__)
 
 #: Regular BibLaTeX types (`Section 2.1.1 <manual_>`_).
-bibtex_standard_types = frozenset([
-    "article",
-    "book", "mvbook", "inbook", "bookinbook", "suppbook", "booklet",
-    "collection", "mvcollection", "incollection", "suppcollection",
-    "dataset",
-    "manual",
-    "misc",
-    "online",
-    "patent",
-    "periodical", "suppperiodical",
-    "proceedings", "mvproceedings", "inproceedings",
-    "reference", "mvreference", "inreference",
-    "report",
-    # "set",
-    "software",
-    "thesis",
-    "unpublished",
-    # "xdata",
-    # "custom[a-f]",
-])
+bibtex_standard_types = frozenset(
+    [
+        "article",
+        "book",
+        "mvbook",
+        "inbook",
+        "bookinbook",
+        "suppbook",
+        "booklet",
+        "collection",
+        "mvcollection",
+        "incollection",
+        "suppcollection",
+        "dataset",
+        "manual",
+        "misc",
+        "online",
+        "patent",
+        "periodical",
+        "suppperiodical",
+        "proceedings",
+        "mvproceedings",
+        "inproceedings",
+        "reference",
+        "mvreference",
+        "inreference",
+        "report",
+        # "set",
+        "software",
+        "thesis",
+        "unpublished",
+        # "xdata",
+        # "custom[a-f]",
+    ]
+)
 
 #: BibLaTeX type aliases (`Section 2.1.2 <manual_>`_).
 bibtex_type_aliases = {
@@ -53,31 +69,35 @@ bibtex_type_aliases = {
 }
 
 #: Non-standard BibLaTeX types (`Section 2.1.3 <manual_>`_).
-bibtex_non_standard_types = frozenset([
-    "artwork",
-    "audio",
-    "bibnote",
-    "commentary",
-    "image",
-    "jurisdiction",
-    "legislation",
-    "legal",
-    "letter",
-    "movie",
-    "music",
-    "performance",
-    "review",
-    "standard",
-    "video",
-])
+bibtex_non_standard_types = frozenset(
+    [
+        "artwork",
+        "audio",
+        "bibnote",
+        "commentary",
+        "image",
+        "jurisdiction",
+        "legislation",
+        "legal",
+        "letter",
+        "movie",
+        "music",
+        "performance",
+        "review",
+        "standard",
+        "video",
+    ]
+)
 
 #: BibLaTeX Software types (`Section 2 <biblatex_software_>`_).
-biblatex_software_types = frozenset([
-    "software",
-    "softwareversion",
-    "softwaremodule",
-    "codefragment",
-])
+biblatex_software_types = frozenset(
+    [
+        "software",
+        "softwareversion",
+        "softwaremodule",
+        "codefragment",
+    ]
+)
 
 #: A set of known BibLaTeX types (as described in Section 2.1 of the `manual`_).
 #: These types are a union of the types above and can be extended with
@@ -87,32 +107,113 @@ bibtex_types = (
     | frozenset(bibtex_type_aliases)
     | bibtex_non_standard_types
     | biblatex_software_types
-    | frozenset(papis.config.getlist("extra-bibtex-types")))
+    | frozenset(papis.config.getlist("extra-bibtex-types"))
+)
 
 
 #: BibLaTeX data fields (`Section 2.2.2 <manual_>`_).
-bibtex_standard_keys = frozenset([
-    "abstract", "addendum", "afterword", "annotation", "annotator", "author",
-    "authortype", "bookauthor", "bookpagination", "booksubtitle", "booktitle",
-    "booktitleaddon", "chapter", "commentator", "date", "doi", "edition",
-    "editor", "editora", "editorb", "editorc", "editortype", "editoratype",
-    "editorbtype", "editorctype", "eid", "entrysubtype", "eprint", "eprintclass",
-    "eprinttype", "eventdate", "eventtitle", "eventtitleaddon", "file",
-    "foreword", "holder", "howpublished", "indextitle", "institution",
-    "introduction", "isan", "isbn", "ismn", "isrn", "issn", "issue",
-    "issuesubtitle", "issuetitle", "issuetitleaddon", "iswc", "journalsubtitle",
-    "journaltitle", "journaltitleaddon", "label", "language", "library",
-    "location", "mainsubtitle", "maintitle", "maintitleaddon", "month",
-    "nameaddon", "note", "number", "organization", "origdate", "origlanguage",
-    "origlocation", "origpublisher", "origtitle", "pages", "pagetotal",
-    "pagination", "part", "publisher", "pubstate", "reprinttitle",
-    "series", "shortauthor", "shorteditor", "shorthand", "shorthandintro",
-    "shortjournal", "shortseries", "shorttitle", "subtitle", "title",
-    "titleaddon", "translator", "url", "urldate", "venue", "version",
-    "volume", "volumes", "year",
-    # fields that we ignore
-    # type,
-])
+bibtex_standard_keys = frozenset(
+    [
+        "abstract",
+        "addendum",
+        "afterword",
+        "annotation",
+        "annotator",
+        "author",
+        "authortype",
+        "bookauthor",
+        "bookpagination",
+        "booksubtitle",
+        "booktitle",
+        "booktitleaddon",
+        "chapter",
+        "commentator",
+        "date",
+        "doi",
+        "edition",
+        "editor",
+        "editora",
+        "editorb",
+        "editorc",
+        "editortype",
+        "editoratype",
+        "editorbtype",
+        "editorctype",
+        "eid",
+        "entrysubtype",
+        "eprint",
+        "eprintclass",
+        "eprinttype",
+        "eventdate",
+        "eventtitle",
+        "eventtitleaddon",
+        "file",
+        "foreword",
+        "holder",
+        "howpublished",
+        "indextitle",
+        "institution",
+        "introduction",
+        "isan",
+        "isbn",
+        "ismn",
+        "isrn",
+        "issn",
+        "issue",
+        "issuesubtitle",
+        "issuetitle",
+        "issuetitleaddon",
+        "iswc",
+        "journalsubtitle",
+        "journaltitle",
+        "journaltitleaddon",
+        "label",
+        "language",
+        "library",
+        "location",
+        "mainsubtitle",
+        "maintitle",
+        "maintitleaddon",
+        "month",
+        "nameaddon",
+        "note",
+        "number",
+        "organization",
+        "origdate",
+        "origlanguage",
+        "origlocation",
+        "origpublisher",
+        "origtitle",
+        "pages",
+        "pagetotal",
+        "pagination",
+        "part",
+        "publisher",
+        "pubstate",
+        "reprinttitle",
+        "series",
+        "shortauthor",
+        "shorteditor",
+        "shorthand",
+        "shorthandintro",
+        "shortjournal",
+        "shortseries",
+        "shorttitle",
+        "subtitle",
+        "title",
+        "titleaddon",
+        "translator",
+        "url",
+        "urldate",
+        "venue",
+        "version",
+        "volume",
+        "volumes",
+        "year",
+        # fields that we ignore
+        # type,
+    ]
+)
 
 #: BibLaTeX field aliases (`Section 2.2.5 <manual_>`_).
 bibtex_key_aliases = {
@@ -127,28 +228,74 @@ bibtex_key_aliases = {
 }
 
 #: Special BibLaTeX fields (`Section 2.2.3 <manual_>`_).
-bibtex_special_keys = frozenset([
-    "crossref", "entryset", "execute", "gender", "langid", "langidopts",
-    "ids", "indexsorttitle", "keywords", "options", "presort", "related",
-    "relatedoptions", "relatedtype", "relatedstring", "sortkey", "sortname",
-    "sortshorthand", "sorttitle", "sortyear", "xdata", "xref",
-    # custom fields (Section 2.3.4)
-    # name[a-c]
-    # name[a-c]type
-    # list[a-f]
-    # user[a-f]
-    # verb[a-c]
-])
+bibtex_special_keys = frozenset(
+    [
+        "crossref",
+        "entryset",
+        "execute",
+        "gender",
+        "langid",
+        "langidopts",
+        "ids",
+        "indexsorttitle",
+        "keywords",
+        "options",
+        "presort",
+        "related",
+        "relatedoptions",
+        "relatedtype",
+        "relatedstring",
+        "sortkey",
+        "sortname",
+        "sortshorthand",
+        "sorttitle",
+        "sortyear",
+        "xdata",
+        "xref",
+        # custom fields (Section 2.3.4)
+        # name[a-c]
+        # name[a-c]type
+        # list[a-f]
+        # user[a-f]
+        # verb[a-c]
+    ]
+)
 
 #: BibLaTeX software keys (`Section 3 <biblatex_software_>`_). Most of these
 #: keys are already standard BibLaTeX keys from :data:`bibtex_standard_keys`.
-biblatex_software_keys = frozenset([
-    "abstract", "author", "date", "editor", "file", "doi", "eprint", "eprinttype",
-    "eprintclass", "hal_id", "hal_version", "license", "month", "note",
-    "institution", "introducedin", "organization", "publisher", "related",
-    "relatedtype", "relatedstring", "repository", "swhid", "subtitle",
-    "title", "url", "urldate", "version", "year",
-])
+biblatex_software_keys = frozenset(
+    [
+        "abstract",
+        "author",
+        "date",
+        "editor",
+        "file",
+        "doi",
+        "eprint",
+        "eprinttype",
+        "eprintclass",
+        "hal_id",
+        "hal_version",
+        "license",
+        "month",
+        "note",
+        "institution",
+        "introducedin",
+        "organization",
+        "publisher",
+        "related",
+        "relatedtype",
+        "relatedstring",
+        "repository",
+        "swhid",
+        "subtitle",
+        "title",
+        "url",
+        "urldate",
+        "version",
+        "year",
+    ]
+)
 
 #: A set of known BibLaTeX fields (as described in Section 2.2 of the `manual`_).
 #: These fields are a union of the above fields and can be extended with
@@ -158,7 +305,8 @@ bibtex_keys = (
     | frozenset(bibtex_key_aliases)
     | bibtex_special_keys
     | biblatex_software_keys
-    | frozenset(papis.config.getlist("extra-bibtex-keys")))
+    | frozenset(papis.config.getlist("extra-bibtex-keys"))
+)
 
 #: A mapping of supported BibLaTeX entry types (see :data:`bibtex_types`) to
 #: BibLaTeX fields (see :data:`bibtex_keys`). Each value is a tuple of disjoint
@@ -168,17 +316,30 @@ bibtex_type_required_keys = {
     None: (),
     # regular types (Section 2.1.1)
     "article": (
-        {"author"}, {"title"}, {"journaltitle", "eprinttype"}, {"year", "date"}),
+        {"author"},
+        {"title"},
+        {"journaltitle", "eprinttype"},
+        {"year", "date"},
+    ),
     "book": ({"author"}, {"title"}, {"year", "date"}),
     "inbook": ({"author"}, {"title"}, {"booktitle"}, {"year", "date"}),
     "booklet": ({"author", "editor"}, {"title"}, {"year", "date"}),
     "collection": ({"editor"}, {"title"}, {"year", "date"}),
     "incollection": (
-        {"author"}, {"title"}, {"editor"}, {"booktitle"}, {"year", "date"}),
+        {"author"},
+        {"title"},
+        {"editor"},
+        {"booktitle"},
+        {"year", "date"},
+    ),
     "manual": ({"author", "editor"}, {"title"}, {"year", "date"}),
     "misc": ({"author", "editor"}, {"title"}, {"year", "date"}),
     "online": (
-        {"author", "editor"}, {"title"}, {"year", "date"}, {"doi", "eprint", "url"}),
+        {"author", "editor"},
+        {"title"},
+        {"year", "date"},
+        {"doi", "eprint", "url"},
+    ),
     "patent": ({"author"}, {"title"}, {"number"}, {"year", "date"}),
     "periodical": ({"editor"}, {"title"}, {"year", "date"}),
     "proceedings": ({"title"}, {"year", "date"}),
@@ -188,16 +349,19 @@ bibtex_type_required_keys = {
     # "set": (),
     "thesis": ({"author"}, {"title"}, {"type"}, {"institution"}, {"year", "date"}),
     "unpublished": ({"author"}, {"title"}, {"year", "date"}),
-
     # field aliases (Section 2.1.2)
     # NOTE: use the `bibtex_type_aliases` dict to replace before looking here
     # non-standard type (Section 2.1.3)
     # NOTE: these have no required keys
-
     # biblatex-software (Section 2)
     "software": ({"author", "editor"}, {"title"}, {"url"}, {"year"}),
     "softwareversion": (
-        {"author", "editor"}, {"title"}, {"url"}, {"version"}, {"year"}),
+        {"author", "editor"},
+        {"title"},
+        {"url"},
+        {"version"},
+        {"year"},
+    ),
     "softwaremodule": ({"author"}, {"subtitle"}, {"url"}, {"year"}),
     "codefragment": ({"url"},),
 }
@@ -275,14 +439,13 @@ bibtex_key_converter: Dict[str, str] = {
     "conferenceName": "eventtitle",
     "place": "location",
     "publicationTitle": "journal",
-    "proceedingsTitle": "booktitle"
+    "proceedingsTitle": "booktitle",
 }
 
 #: A set of BibLaTeX fields to ignore when exporting from the Papis database.
 #: These can be extended with :confval:`bibtex-ignore-keys`.
-bibtex_ignore_keys = (
-    frozenset(["file"])
-    | frozenset(papis.config.getlist("bibtex-ignore-keys"))
+bibtex_ignore_keys = frozenset(["file"]) | frozenset(
+    papis.config.getlist("bibtex-ignore-keys")
 )
 
 #: A regex for acceptable characters to use in a reference string. These are
@@ -313,8 +476,11 @@ class Importer(papis.importer.Importer):
 
     @classmethod
     def match(cls, uri: str) -> Optional[papis.importer.Importer]:
-        if (not os.path.exists(uri) or os.path.isdir(uri)
-                or papis.filetype.get_document_extension(uri) == "pdf"):
+        if (
+            not os.path.exists(uri)
+            or os.path.isdir(uri)
+            or papis.filetype.get_document_extension(uri) == "pdf"
+        ):
             return None
         importer = Importer(uri=uri)
         importer.fetch()
@@ -324,9 +490,8 @@ class Importer(papis.importer.Importer):
         self.logger.info("Reading input file or string: '%s'.", self.uri)
 
         from papis.downloaders import download_document
-        if (
-                self.uri.startswith("http://")
-                or self.uri.startswith("https://")):
+
+        if self.uri.startswith("http://") or self.uri.startswith("https://"):
             filename = download_document(self.uri, expected_document_extension="bib")
         else:
             filename = self.uri
@@ -334,19 +499,22 @@ class Importer(papis.importer.Importer):
         try:
             bib_data = bibtex_to_dict(filename) if filename is not None else []
         except Exception as exc:
-            self.logger.error("Error reading BibTeX file or string: '%s'.",
-                              self.uri, exc_info=exc)
+            self.logger.error(
+                "Error reading BibTeX file or string: '%s'.", self.uri, exc_info=exc
+            )
             return
 
         if not bib_data:
             self.logger.warning(
-                "Failed parsing the following file or string: '%s'.", self.uri)
+                "Failed parsing the following file or string: '%s'.", self.uri
+            )
             return
 
         if len(bib_data) > 1:
             self.logger.warning(
                 "The BibTeX file contains %d entries. Picking the first one!",
-                len(bib_data))
+                len(bib_data),
+            )
 
         self.ctx.data = bib_data[0]
 
@@ -366,9 +534,7 @@ def explorer(ctx: click.core.Context, bibfile: str) -> None:
     """
     logger.info("Reading BibTeX file '%s'...", bibfile)
 
-    docs = [
-        papis.document.from_data(d)
-        for d in bibtex_to_dict(bibfile)]
+    docs = [papis.document.from_data(d) for d in bibtex_to_dict(bibfile)]
     ctx.obj["documents"] += docs
 
     logger.info("Found %d documents.", len(docs))
@@ -388,20 +554,31 @@ def bibtexparser_entry_to_papis(entry: Dict[str, Any]) -> Dict[str, Any]:
         _k("ID", [{"key": "ref", "action": None}]),
         _k("ENTRYTYPE", [{"key": "type", "action": None}]),
         _k("link", [{"key": "url", "action": None}]),
-        _k("title", [{
-            "key": "title",
-            "action": lambda x: latex_to_unicode(x.replace("\n", " "))
-            }]),
-        _k("author", [{
-            "key": "author_list",
-            "action": lambda author: papis.document.split_authors_name([
-                latex_to_unicode(author)
-                ], separator="and")
-            }]),
+        _k(
+            "title",
+            [
+                {
+                    "key": "title",
+                    "action": lambda x: latex_to_unicode(x.replace("\n", " ")),
+                }
+            ],
+        ),
+        _k(
+            "author",
+            [
+                {
+                    "key": "author_list",
+                    "action": lambda author: papis.document.split_authors_name(
+                        [latex_to_unicode(author)], separator="and"
+                    ),
+                }
+            ],
+        ),
     ]
 
     result = papis.document.keyconversion_to_data(
-        key_conversion, entry, keep_unknown_keys=True)
+        key_conversion, entry, keep_unknown_keys=True
+    )
 
     return result
 
@@ -431,14 +608,17 @@ def bibtex_to_dict(bibtex: str) -> List[Dict[str, str]]:
     :returns: a list of entries from the BibTeX data in a compatible format.
     """
     from bibtexparser.bparser import BibTexParser
+
     parser = BibTexParser(
         common_strings=True,
         ignore_nonstandard_types=False,
         homogenize_fields=False,
-        interpolate_strings=True)
+        interpolate_strings=True,
+    )
 
     # bibtexparser has too many debug messages to be useful
     import logging
+
     logging.getLogger("bibtexparser.bparser").setLevel(logging.WARNING)
 
     if os.path.exists(bibtex):
@@ -462,11 +642,14 @@ def ref_cleanup(ref: str) -> str:
     :returns: a reference without any disallowed characters.
     """
     import slugify
-    ref = slugify.slugify(ref,
-                          lowercase=False,
-                          word_boundary=False,
-                          separator="_",
-                          regex_pattern=ref_allowed_characters)
+
+    ref = slugify.slugify(
+        ref,
+        lowercase=False,
+        word_boundary=False,
+        separator="-",
+        regex_pattern=ref_allowed_characters,
+    )
 
     return str(ref).strip()
 
@@ -504,8 +687,7 @@ def create_reference(doc: Dict[str, Any], force: bool = False) -> str:
 
     if not ref:
         # Just try to get something out of the data
-        ref = "{:.30}".format(
-              " ".join(string.capwords(str(d)) for d in doc.values()))
+        ref = "{:.30}".format(" ".join(string.capwords(str(d)) for d in doc.values()))
         ref = string.capwords(ref).replace(" ", "").strip()
 
     logger.debug("Generated ref '%s'.", ref)
@@ -516,8 +698,7 @@ def to_bibtex_multiple(documents: List[papis.document.Document]) -> Iterator[str
     for doc in documents:
         bib = to_bibtex(doc)
         if not bib:
-            logger.warning("Skipping document export: '%s'.",
-                           doc.get_info_file())
+            logger.warning("Skipping document export: '%s'.", doc.get_info_file())
             continue
 
         yield bib
@@ -553,9 +734,11 @@ def to_bibtex(document: papis.document.Document, *, indent: int = 2) -> str:
         elif document["type"] in bibtex_type_converter:
             bibtex_type = bibtex_type_converter[document["type"]]
         else:
-            logger.error("Invalid BibTeX type '%s' in document: '%s'.",
-                         document["type"],
-                         document.get_info_file())
+            logger.error(
+                "Invalid BibTeX type '%s' in document: '%s'.",
+                document["type"],
+                document.get_info_file(),
+            )
             return ""
 
     if not bibtex_type:
@@ -564,8 +747,7 @@ def to_bibtex(document: papis.document.Document, *, indent: int = 2) -> str:
     # determine ref value
     ref = create_reference(document)
     if not ref:
-        logger.error("No valid ref found for document: '%s'.",
-                     document.get_info_file())
+        logger.error("No valid ref found for document: '%s'.", document.get_info_file())
 
         return ""
 
@@ -599,7 +781,9 @@ def to_bibtex(document: papis.document.Document, *, indent: int = 2) -> str:
             else:
                 logger.warning(
                     "'journal-key' key '%s' is not present for ref '%s'.",
-                    journal_key, document["ref"])
+                    journal_key,
+                    document["ref"],
+                )
 
         override_key = f"{bib_key}_latex"
         if override_key in document:
@@ -612,11 +796,14 @@ def to_bibtex(document: papis.document.Document, *, indent: int = 2) -> str:
 
     # handle file exporting
     from papis.exceptions import DefaultSettingValueMissing
+
     try:
         # NOTE: this option is deprecated and should be removed in the future
         export_file = papis.config.getboolean("bibtex-export-zotero-file")
-        logger.warning("The 'bibtex-export-zotero-file' option is deprecated. "
-                       "Use 'bibtex-export-file' instead.")
+        logger.warning(
+            "The 'bibtex-export-zotero-file' option is deprecated. "
+            "Use 'bibtex-export-file' instead."
+        )
     except DefaultSettingValueMissing:
         export_file = papis.config.getboolean("bibtex-export-file")
 
