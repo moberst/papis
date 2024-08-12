@@ -265,6 +265,7 @@ def run(paths: List[str],
                 break
 
         data[key_name] = new_id
+        tmp_document[key_name] = new_id
 
     # reference building
     # NOTE: this needs to go before any papis.format calls, so that those can
