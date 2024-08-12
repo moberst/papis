@@ -1,7 +1,7 @@
 import os
 import pathlib
 import sys
-from typing import Iterable, Iterator, List, Optional, Union
+from typing import Iterable, Iterator, Literal, List, Optional, Union
 from warnings import warn
 
 import papis.config
@@ -139,7 +139,7 @@ def get_document_file_name(
         doc: DocumentLike,
         orig_path: PathLike,
         suffix: str = "", *,
-        file_name_format: Optional[str] = None,
+        file_name_format: Optional[Union[str, Literal[False]]] = None,
         base_name_limit: int = 150) -> str:
     """Generate a file name based on *orig_path* for the document *doc*.
 
@@ -169,6 +169,8 @@ def get_document_file_name(
 
     if not file_name_format:
         file_name_format = orig_path.name
+
+    assert isinstance(file_name_format, str)
 
     from papis.filetype import get_document_extension
 
@@ -273,7 +275,7 @@ def get_document_folder(
 
     if not is_relative_to(out_folder_path, dirname):
         raise ValueError(
-            "Formatting produced a path outside of library: "
+            "Formatting produced a path outside the root directory: "
             f"'{dirname}' not relative to '{out_folder_path}'")
 
     return out_folder_path
@@ -309,3 +311,81 @@ def get_document_unique_folder(
         folder_name_format=folder_name_format)
 
     return _make_unique_folder(out_folder_path)
+
+
+def _is_remote(uri: str) -> bool:
+    return uri.startswith("http://") or uri.startswith("https://")
+
+
+def rename_document_files(
+        doc: DocumentLike,
+        in_document_paths: Iterable[str], *,
+        file_name_format: Optional[Union[str, Literal[False]]] = None,
+        allow_remote: bool = True,
+        ) -> List[str]:
+    """Rename *in_document_paths* according to *file_name_format* and ensure
+    uniqueness.
+
+    Uniqueness is required with respect to the files in *in_document_paths*
+    and those in the *doc* itself (under the *files* key). If a repeated file
+    name is found, a suffix is generated using :func:`unique_suffixes` and
+    appended to the new file.
+
+    :param file_name_format: a format string used to construct a new file name
+        from the document data (see :func:`papis.format.format`). This value
+        defaults to :confval:`add-file-name` if not provided.
+    :param allow_remote: if *True*, *in_document_paths* can also be remote
+        URL, that will be downloaded to local files.
+    :returns: a list of modified file names form *in_document_paths* that
+        are renamed based on *file_name_format* and suffixed for uniqueness.
+    """
+    if file_name_format is None:
+        file_name_format = papis.config.get("add-file-name")
+
+    from collections import Counter
+
+    # find next suffix for each extension
+    known_files = set(doc.get("files", []))
+    exts = Counter([pathlib.Path(d).suffix for d in known_files])
+    suffixes = {ext: unique_suffixes(skip=n - 1) for ext, n in exts.items()}
+
+    from papis.downloaders import download_document
+
+    new_files = []
+    for in_file_path in in_document_paths:
+        if not in_file_path:
+            continue
+
+        if _is_remote(in_file_path):
+            if allow_remote:
+                local_in_file_path = download_document(in_file_path)
+            else:
+                local_in_file_path = ""
+        else:
+            local_in_file_path = in_file_path
+
+        if not local_in_file_path:
+            logger.info("Skipping renaming file: '%s'.", in_file_path)
+            continue
+
+        # get suffix
+        _, ext = os.path.splitext(local_in_file_path)
+        isuffix = suffixes.get(ext)
+        if not isuffix:
+            suffixes[ext] = isuffix = unique_suffixes()
+
+        # ensure a unique file name
+        new_filename = get_document_file_name(
+            doc, local_in_file_path,
+            file_name_format=file_name_format)
+
+        while new_filename in known_files:
+            new_filename = get_document_file_name(
+                doc, local_in_file_path,
+                suffix=next(isuffix),
+                file_name_format=file_name_format)
+
+        new_files.append(new_filename)
+        known_files.add(new_filename)
+
+    return new_files
