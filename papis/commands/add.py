@@ -328,6 +328,21 @@ def run(paths: List[str],
 
     # Check if the user wants to edit before submitting the doc
     # to the library
+
+    def is_arxiv(doc):
+        return all(
+            [
+                doc["type"] == "article",
+                "journal" not in doc.keys(),
+                "eprint" in doc.keys(),
+            ]
+        )
+
+    if is_arxiv(tmp_document):
+        arxiv_str = f"arXiv preprint ({tmp_document['eprint']})"
+        print(f"Fixing {tmp_document['ref']} to have journal: {arxiv_str}")
+        tmp_document["journal"] = arxiv_str
+        tmp_document.save()
     if edit:
         logger.info("Editing file before adding it.")
         papis.api.edit_file(tmp_document.get_info_file(), wait=True)
