@@ -453,10 +453,6 @@ class Document(Dict[str, Any]):
         else:
             self.clear()
             self.update(data)
-            current_keys = list(self.keys())
-            for k in current_keys:
-                if k not in data.keys():
-                    self.pop(k)
 
 
 def from_data(data: Dict[str, Any]) -> Document:
