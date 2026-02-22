@@ -143,6 +143,11 @@ def run(document: Document,
 
         files = document.get_files()
         if not files:
+            if "url" in document:
+                import webbrowser
+                webbrowser.open(document["url"], new=2)
+                return
+
             logger.error("The chosen document has no files attached: '%s'.",
                          describe(document))
             return
