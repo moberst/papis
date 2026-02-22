@@ -293,7 +293,7 @@ ref_allowed_characters = r"([^a-zA-Z0-9._:]+|(?<!\\)[._:])"
 #: A list of fields that should not be escaped. In general, these will be
 #: escaped by the BibTeX engine and should not be modified
 #: (e.g. Verbatim fields and URI fields in `Section 2.2.1 <manual_>`_).
-bibtex_verbatim_fields = frozenset({"doi", "eprint", "file", "pdf", "url", "urlraw"})
+bibtex_verbatim_fields = frozenset({"doi", "eprint", "file", "howpublished", "pdf", "url", "urlraw"})
 
 
 @cache
