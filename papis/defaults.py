@@ -124,6 +124,8 @@ settings: dict[str, Any] = {
     # edit
     "notes-name": "notes.tex",
     "notes-template": "",
+    "notes-frontmatter-sync": False,
+    "notes-frontmatter-keys": ["title", "author", "year", "tags", "ref"],
 
     # doctor
     "doctor-default-checks": ["files", "biblatex-required-keys", "bibtex-type", "refs"],
