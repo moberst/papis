@@ -595,6 +595,30 @@ Edit options
     file. If no file is found at the path to the template, then also an empty
     notes file will be generated.
 
+.. papis-config:: notes-frontmatter-sync
+
+    If set to ``True``, Papis will automatically update the YAML frontmatter
+    in note files whenever the document metadata changes (e.g. when tags are
+    added or removed with ``papis tag``, or when metadata is updated with
+    ``papis update`` or ``papis edit``).
+
+    Only the keys listed in :confval:`notes-frontmatter-keys` are managed by
+    the sync. Any other keys the user adds manually to the frontmatter are
+    preserved.
+
+    .. code:: ini
+
+        notes-frontmatter-sync = True
+
+.. papis-config:: notes-frontmatter-keys
+
+    A list of document keys to sync into the YAML frontmatter of note files
+    when :confval:`notes-frontmatter-sync` is enabled.
+
+    .. code:: ini
+
+        notes-frontmatter-keys = ["title", "author", "year", "tags", "ref"]
+
 Doctor options
 --------------
 
