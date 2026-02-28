@@ -413,6 +413,9 @@ def run(
 
     save_doc(document)
 
+    from papis.notes import update_notes_frontmatter
+    update_notes_frontmatter(document)
+
     if git:
         from papis.git import add_and_commit_resource
         add_and_commit_resource(

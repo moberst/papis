@@ -4,7 +4,8 @@ This module controls the notes for every Papis document.
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING
+import re
+from typing import TYPE_CHECKING, Any
 
 import papis.config
 import papis.logging
@@ -13,6 +14,12 @@ if TYPE_CHECKING:
     from papis.document import Document
 
 logger = papis.logging.get_logger(__name__)
+
+#: Regex to match YAML frontmatter delimited by ``---`` at the start of a file.
+_FRONTMATTER_RE = re.compile(
+    r"\A---[ \t]*\n(.*?\n)---[ \t]*\n?",
+    re.DOTALL,
+)
 
 
 def has_notes(doc: Document) -> bool:
@@ -74,3 +81,109 @@ def notes_path_ensured(doc: Document) -> str:
             fd.write(template)
 
     return notespath
+
+
+def parse_frontmatter(content: str) -> tuple[dict[str, Any], str]:
+    """Parse YAML frontmatter from note file content.
+
+    Frontmatter is expected at the very start of the file, delimited by ``---``.
+
+    :param content: the full text content of a note file.
+    :returns: a tuple ``(metadata, body)`` where *metadata* is a dict of the
+        parsed YAML frontmatter (empty dict if none found) and *body* is the
+        remaining content after the frontmatter block.
+    """
+    match = _FRONTMATTER_RE.match(content)
+    if match is None:
+        return {}, content
+
+    import yaml
+
+    try:
+        from papis.yaml import Loader
+        metadata = yaml.load(match.group(1), Loader=Loader)
+    except Exception as exc:
+        logger.warning("Failed to parse YAML frontmatter in notes file.",
+                       exc_info=exc)
+        return {}, content
+
+    if not isinstance(metadata, dict):
+        return {}, content
+
+    body = content[match.end():]
+    return metadata, body
+
+
+def dump_frontmatter(metadata: dict[str, Any], body: str) -> str:
+    """Serialize a metadata dict as YAML frontmatter prepended to *body*.
+
+    :param metadata: dict of key-value pairs to write as YAML frontmatter.
+    :param body: the note body content to append after the frontmatter block.
+    :returns: the combined string with ``---`` delimited frontmatter followed
+        by the body.
+    """
+    if not metadata:
+        return body
+
+    import yaml
+
+    from papis.yaml import Dumper
+
+    fm = yaml.dump(metadata,
+                   Dumper=Dumper,
+                   allow_unicode=True,
+                   default_flow_style=False)
+    return f"---\n{fm}---\n{body}"
+
+
+def update_notes_frontmatter(doc: Document) -> bool:
+    """Sync document metadata into the YAML frontmatter of its notes file.
+
+    Only the keys listed in :confval:`notes-frontmatter-keys` are written into
+    the frontmatter. Any other keys already present in the frontmatter are
+    preserved. The sync is gated behind the :confval:`notes-frontmatter-sync`
+    configuration option.
+
+    :param doc: the document whose notes should be updated.
+    :returns: *True* if the notes file was modified, *False* otherwise.
+    """
+    if not papis.config.getboolean("notes-frontmatter-sync"):
+        return False
+
+    if not has_notes(doc):
+        return False
+
+    notespath = os.path.join(doc.get_main_folder() or "", doc["notes"])
+    if not os.path.exists(notespath):
+        return False
+
+    keys = papis.config.getlist("notes-frontmatter-keys")
+    if not keys:
+        return False
+
+    with open(notespath, encoding="utf-8") as fd:
+        content = fd.read()
+
+    metadata, body = parse_frontmatter(content)
+
+    changed = False
+    for key in keys:
+        value = doc.get(key)
+        if value is not None:
+            if metadata.get(key) != value:
+                metadata[key] = value
+                changed = True
+        elif key in metadata:
+            del metadata[key]
+            changed = True
+
+    if not changed:
+        return False
+
+    new_content = dump_frontmatter(metadata, body)
+
+    with open(notespath, "w", encoding="utf-8") as fd:
+        fd.write(new_content)
+
+    logger.debug("Updated frontmatter in notes file '%s'.", notespath)
+    return True
