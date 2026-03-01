@@ -377,7 +377,8 @@ def bibtex_to_dict(bibtex: str) -> list[DocumentLike]:
 
 
 def ref_cleanup(ref: str,
-                ref_word_separator: str | None = None) -> str:
+                ref_word_separator: str | None = None,
+                ref_lowercase: bool | None = None) -> str:
     """Function to cleanup reference strings so that they are accepted by BibLaTeX.
 
     This uses the :data:`ref_allowed_characters` to remove any disallowed characters
@@ -391,8 +392,11 @@ def ref_cleanup(ref: str,
     if ref_word_separator is None:
         ref_word_separator = papis.config.getstring("ref-word-separator")
 
+    if ref_lowercase is None:
+        ref_lowercase = papis.config.getboolean("ref-lowercase")
+
     ref = slugify.slugify(ref,
-                          lowercase=False,
+                          lowercase=ref_lowercase,
                           word_boundary=False,
                           separator=ref_word_separator,
                           regex_pattern=ref_allowed_characters)
@@ -400,12 +404,17 @@ def ref_cleanup(ref: str,
     # FIXME: we generally allow escaping these characters using `\:`, but slugify
     # seems to kindly replace the `\` by a `_` and leave the `:` alone in this case.
     # Can we convince it to not do that?
-    return str(ref).strip().replace("_:", ":").replace("__", "_").replace("_.", ".")
+    sep = ref_word_separator
+    return (str(ref).strip()
+            .replace(f"{sep}:", ":")
+            .replace(f"{sep}{sep}", sep)
+            .replace(f"{sep}.", "."))
 
 
 def create_reference(doc: DocumentLike, *,
                      ref_format: AnyString | None = None,
                      ref_word_separator: str | None = None,
+                     ref_lowercase: bool | None = None,
                      force: bool = False) -> str:
     """Try to create a reference for the document *doc*.
 
@@ -452,7 +461,8 @@ def create_reference(doc: DocumentLike, *,
         ref = string.capwords(ref).replace(" ", "").strip()
 
     logger.debug("Generated ref '%s'.", ref)
-    return ref_cleanup(ref, ref_word_separator=ref_word_separator)
+    return ref_cleanup(ref, ref_word_separator=ref_word_separator,
+                       ref_lowercase=ref_lowercase)
 
 
 def author_list_to_author(doc: Document,

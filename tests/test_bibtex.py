@@ -78,6 +78,18 @@ def test_clean_ref(tmp_config: TemporaryConfiguration) -> None:
         assert rc == ref_cleanup(r)
 
 
+def test_clean_ref_lowercase(tmp_config: TemporaryConfiguration) -> None:
+    from papis.bibtex import ref_cleanup
+
+    for (r, rc) in [
+            (r"Albert Einstein ()\:1923", "albert-einstein:1923"),
+            ("Einstein über etwas und so 1923",
+             "einstein-uber-etwas-und-so-1923"),
+            ]:
+        assert rc == ref_cleanup(r, ref_word_separator="-",
+                                 ref_lowercase=True)
+
+
 def test_to_bibtex_wrong_type(tmp_config: TemporaryConfiguration) -> None:
     """Test no BibTeX entry is constructed for incorrect types."""
     from papis.document import from_data

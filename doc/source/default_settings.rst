@@ -227,6 +227,14 @@ General settings
     Therefore, characters ``" # ' ( ) , = { } %`` are not recommended for use as
     separators because neither ``bibtex`` nor ``biber`` can process them.
 
+.. papis-config:: ref-lowercase
+    :type: bool
+
+    If set to ``True``, generated ref keys will be lowercased. By default this
+    is ``False`` to preserve the original casing of authors and titles. Setting
+    this to ``True`` together with ``ref-word-separator = -`` gives ref keys
+    that are consistent with the default document path normalization.
+
 .. papis-config:: library-header-format
 
     The format of a library when shown in a picker, e.g. when using
