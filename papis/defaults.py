@@ -68,6 +68,7 @@ settings: dict[str, Any] = {
     "doc-paths-extra-chars": "",
     "doc-paths-word-separator": "-",
     "ref-word-separator": "_",
+    "ref-lowercase": False,
     "library-header-format": _f(
         "<ansired>{library[name]}</ansired>"
         " <ansiblue>{library[paths]}</ansiblue>"

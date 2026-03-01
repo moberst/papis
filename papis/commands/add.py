@@ -218,7 +218,7 @@ def run(paths: list[str],
     if "ref" not in data:
         from papis.bibtex import create_reference
 
-        new_ref = create_reference(data)
+        new_ref = create_reference(tmp_document)
         if new_ref:
             logger.info("Created reference '%s'.", new_ref)
             tmp_document["ref"] = new_ref
