@@ -492,6 +492,32 @@ Add options
     add``. Note that, this setting is not allowed to contain formatting options.
     However, one can also specify nested sub-folders.
 
+.. papis-config:: folder-tag-dirs
+
+    A list of tags that get their own subfolder in the library. Newly added
+    documents that have one of these tags are placed in the corresponding
+    subfolder instead of the library root (or :confval:`folder-default-dir`).
+    The list is in priority order, where the last matching tag wins. The
+    ``folder-location`` check of ``papis doctor`` can be used to move existing
+    documents to their expected subfolder when their tags change.
+
+    .. code:: ini
+
+        folder-tag-dirs = ["to-read", "starred"]
+
+    An explicit ``--subfolder`` option to ``papis add`` takes precedence over
+    this setting.
+
+.. papis-config:: folder-default-dir
+
+    The library subfolder for documents that match none of the tags in
+    :confval:`folder-tag-dirs`. If empty (the default), such documents are
+    placed in the library root.
+
+    .. code:: ini
+
+        folder-default-dir = all
+
 .. papis-config:: add-confirm
 
     A setting that controls the default for the ``--confirm`` flag of ``papis add``.

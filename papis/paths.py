@@ -233,6 +233,29 @@ def get_document_hash_folder(
     return compute_an_id(doc, seed)
 
 
+def get_tag_folder(doc: DocumentLike) -> str:
+    """Compute the library subfolder for *doc* based on its tags.
+
+    The :confval:`folder-tag-dirs` setting gives a list of tags that get their
+    own subfolder in the library (e.g. ``to-read``). The list is in priority
+    order, where the last matching tag wins. Documents matching none of the
+    tags are placed in the :confval:`folder-default-dir` subfolder, if set.
+
+    :returns: a subfolder name (relative to the library root) for *doc*, or an
+        empty string if neither option is configured.
+    """
+    tag_dirs = papis.config.getlist("folder-tag-dirs")
+    subfolder = papis.config.getstring("folder-default-dir")
+
+    tags = doc.get("tags")
+    if isinstance(tags, list):
+        for tag in tag_dirs:
+            if tag in tags:
+                subfolder = tag
+
+    return normalize_path(subfolder) if subfolder else ""
+
+
 def get_document_folder(
         doc: DocumentLike,
         dirname: PathLike, *,

@@ -348,3 +348,31 @@ def test_add_set_invalid_format_cli(tmp_library: TemporaryLibrary) -> None:
     doc, = db.query_dict({"author": "Bertrand Russell"})
     assert doc["title"] == "Principia"
     assert not doc.get_files()
+
+
+def test_add_tag_folder(tmp_library: TemporaryLibrary) -> None:
+    import papis.config
+    from papis.commands.add import run
+
+    papis.config.set("folder-default-dir", "all")
+    papis.config.set("folder-tag-dirs", ["to-read"])
+
+    run([], data={"author": "Evangelista", "title": "MRCI", "tags": ["misc"]})
+    run([], data={"author": "Bohm", "title": "My effect", "tags": ["to-read"]})
+
+    import papis.database
+
+    db = papis.database.get()
+    libdir = papis.config.get_lib_dirs()[0]
+
+    # check: unmatched tags go to the default dir
+    doc, = db.query_dict({"author": "Evangelista"})
+    folder = doc.get_main_folder()
+    assert folder is not None
+    assert os.path.relpath(folder, libdir).split(os.sep)[0] == "all"
+
+    # check: matching tags go to the tag dir
+    doc, = db.query_dict({"author": "Bohm"})
+    folder = doc.get_main_folder()
+    assert folder is not None
+    assert os.path.relpath(folder, libdir).split(os.sep)[0] == "to-read"

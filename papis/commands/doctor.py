@@ -1119,6 +1119,330 @@ def string_cleaner_check(doc: Document) -> list[Error]:
     return results
 
 
+REF_FORMAT_CHECK_NAME = "ref-format"
+
+
+def get_expected_ref(doc: Document) -> str:
+    """Generate the reference for *doc* from :confval:`ref-format`.
+
+    :returns: the expected (cleaned) reference, or an empty string if no
+        reference can be generated from the configured format.
+    """
+    from papis.bibtex import ref_cleanup
+    from papis.format import format as format_pattern
+
+    try:
+        ref_format = papis.config.getformatpattern("ref-format")
+    except ValueError:
+        return ""
+
+    ref = format_pattern(ref_format, doc, default="")
+    if not ref:
+        return ""
+
+    return ref_cleanup(ref)
+
+
+def ref_format_check(doc: Document) -> list[Error]:
+    """
+    Check that the document reference matches the :confval:`ref-format`
+    configuration option.
+
+    The standard ``refs`` check only ensures that a reference exists and does
+    not contain invalid characters. This check additionally regenerates the
+    reference from :confval:`ref-format` and flags documents whose reference
+    differs, e.g. after the format has been changed. Documents for which no
+    reference can be generated from the format are skipped.
+
+    :returns: an error if the reference does not match the configured format.
+    """
+
+    def ref_format_fixer() -> None:
+        ref = get_expected_ref(doc)
+        if not ref or ref == doc.get("ref"):
+            return
+
+        logger.info("[FIX] Updating ref from '%s' to '%s'.", doc.get("ref"), ref)
+        doc["ref"] = ref
+
+        from papis.notes import update_notes_frontmatter
+        update_notes_frontmatter(doc)
+
+    expected = get_expected_ref(doc)
+    if not expected or expected == doc.get("ref"):
+        return []
+
+    return [make_error(doc, REF_FORMAT_CHECK_NAME,
+                       msg=(f"Reference '{doc.get('ref')}' does not match the "
+                            f"configured format: expected '{expected}'"),
+                       fix_action=ref_format_fixer,
+                       payload="ref")]
+
+
+NOTES_MISSING_CHECK_NAME = "notes-missing"
+
+
+def notes_missing_check(doc: Document) -> list[Error]:
+    """
+    Check that the document has a notes file on disk.
+
+    The fixer creates the notes file using the :confval:`notes-name` and
+    :confval:`notes-template` settings (as done by ``papis edit --notes``)
+    and syncs its frontmatter when :confval:`notes-frontmatter-sync` is
+    enabled.
+
+    :returns: an error if the document has no notes file on disk.
+    """
+
+    def notes_missing_fixer() -> None:
+        from papis.notes import notes_path_ensured, update_notes_frontmatter
+
+        notespath = notes_path_ensured(doc)
+        logger.info("[FIX] Created notes file '%s'.", notespath)
+
+        update_notes_frontmatter(doc)
+
+    folder = doc.get_main_folder()
+    if folder is None:
+        return []
+
+    notes = doc.get("notes")
+    if notes and os.path.exists(os.path.join(folder, str(notes))):
+        return []
+
+    msg = ("Notes file is missing"
+           if not notes else f"Notes file '{notes}' not found on disk")
+    return [make_error(doc, NOTES_MISSING_CHECK_NAME,
+                       msg=msg,
+                       fix_action=notes_missing_fixer,
+                       payload="notes")]
+
+
+NOTES_NAME_CHECK_NAME = "notes-name"
+
+
+def get_expected_notes_name(doc: Document) -> str:
+    """Generate the expected notes filename for *doc* from
+    :confval:`notes-name`.
+
+    The extension of the existing notes file is preserved if the document
+    already has notes attached.
+
+    :returns: the expected notes filename, or an empty string if no filename
+        can be generated from the configured format.
+    """
+    from papis.format import format as format_pattern
+    from papis.paths import normalize_path
+
+    try:
+        pattern = papis.config.getformatpattern("notes-name")
+    except ValueError:
+        return ""
+
+    name = format_pattern(pattern, doc, default="")
+    if not name:
+        return ""
+
+    base, ext = os.path.splitext(name)
+    notes = str(doc.get("notes", ""))
+    if notes:
+        _, old_ext = os.path.splitext(notes)
+        ext = old_ext or ext
+
+    return normalize_path(base) + ext
+
+
+def notes_name_check(doc: Document) -> list[Error]:
+    """
+    Check that the notes filename matches the :confval:`notes-name`
+    configuration option.
+
+    The fixer renames the notes file on disk (preserving its extension) and
+    updates the ``notes`` key accordingly. Documents without a ``notes`` key
+    are skipped (see the ``notes-missing`` check).
+
+    :returns: an error if the notes filename does not match the configured
+        format.
+    """
+
+    def notes_name_fixer() -> None:
+        folder = doc.get_main_folder()
+        expected = get_expected_notes_name(doc)
+        notes = str(doc.get("notes", ""))
+        if folder is None or not expected or not notes or notes == expected:
+            return
+
+        old_path = os.path.join(folder, notes)
+        new_path = os.path.join(folder, expected)
+        if os.path.exists(old_path):
+            if os.path.exists(new_path):
+                raise FileExistsError(
+                    f"Cannot rename notes to '{new_path}': file already exists")
+            os.rename(old_path, new_path)
+
+        logger.info("[FIX] Renaming notes file '%s' to '%s'.", notes, expected)
+        doc["notes"] = expected
+
+    notes = doc.get("notes")
+    if not notes:
+        return []
+
+    expected = get_expected_notes_name(doc)
+    if not expected or str(notes) == expected:
+        return []
+
+    return [make_error(doc, NOTES_NAME_CHECK_NAME,
+                       msg=(f"Notes file '{notes}' does not match the "
+                            f"configured format: expected '{expected}'"),
+                       fix_action=notes_name_fixer,
+                       payload="notes")]
+
+
+FRONTMATTER_SYNC_CHECK_NAME = "frontmatter-sync"
+
+
+def frontmatter_sync_check(doc: Document) -> list[Error]:
+    """
+    Check that the YAML frontmatter of the notes file is in sync with the
+    document metadata (see :confval:`notes-frontmatter-sync` and
+    :confval:`notes-frontmatter-keys`).
+
+    The check is skipped if :confval:`notes-frontmatter-sync` is disabled or
+    if the document has no notes file on disk (see the ``notes-missing``
+    check).
+
+    :returns: an error if the notes frontmatter is out of sync.
+    """
+    from papis.notes import get_frontmatter_update, has_notes, parse_frontmatter
+
+    if not papis.config.getboolean("notes-frontmatter-sync"):
+        return []
+
+    folder = doc.get_main_folder()
+    if folder is None or not has_notes(doc):
+        return []
+
+    notespath = os.path.join(folder, str(doc["notes"]))
+    if not os.path.exists(notespath):
+        return []
+
+    with open(notespath, encoding="utf-8") as fd:
+        content = fd.read()
+
+    metadata, _ = parse_frontmatter(content)
+    _, changed = get_frontmatter_update(doc, metadata)
+    if not changed:
+        return []
+
+    def frontmatter_sync_fixer() -> None:
+        from papis.notes import update_notes_frontmatter
+
+        logger.info("[FIX] Syncing frontmatter in notes file '%s'.", notespath)
+        update_notes_frontmatter(doc)
+
+    return [make_error(doc, FRONTMATTER_SYNC_CHECK_NAME,
+                       msg="Notes frontmatter is out of sync with the "
+                           "document metadata",
+                       fix_action=frontmatter_sync_fixer,
+                       payload="notes")]
+
+
+FOLDER_LOCATION_CHECK_NAME = "folder-location"
+
+
+def get_expected_folder(doc: Document) -> str | None:
+    """Compute the expected main folder for *doc*.
+
+    The expected folder lives in the subfolder given by
+    :func:`papis.paths.get_tag_folder` (see :confval:`folder-tag-dirs` and
+    :confval:`folder-default-dir`) under the library directory that contains
+    the document. The folder name itself is generated from
+    :confval:`add-folder-name`, unless the document has an explicit
+    ``folder_name`` key, which takes precedence (useful e.g. for documents
+    with institutional authors, where the configured format does not produce
+    a good name).
+
+    :returns: the expected absolute path of the document folder, or *None* if
+        the document is not inside one of the current library directories.
+    """
+    from papis.paths import (
+        get_document_folder,
+        get_tag_folder,
+        is_relative_to,
+        normalize_path,
+    )
+
+    folder = doc.get_main_folder()
+    if not folder:
+        return None
+
+    folder = os.path.realpath(folder)
+    lib_dirs = [os.path.realpath(os.path.expanduser(d))
+                for d in papis.config.get_lib_dirs()]
+    libdir = next((d for d in lib_dirs if is_relative_to(folder, d)), None)
+    if libdir is None:
+        return None
+
+    parent = os.path.join(libdir, get_tag_folder(doc))
+
+    folder_name = doc.get("folder_name")
+    if folder_name:
+        return os.path.join(parent, normalize_path(str(folder_name)))
+
+    return get_document_folder(doc, parent)
+
+
+def folder_location_check(doc: Document) -> list[Error]:
+    """
+    Check that the document folder is at the expected location in the library
+    (see :func:`get_expected_folder`).
+
+    Folders that only differ from the expected name by a unique suffix (as
+    added by ``papis add`` on collisions, e.g. ``-a``) are accepted. Documents
+    outside the current library directories (e.g. temporary documents) are
+    skipped.
+
+    :returns: an error if the document folder is not at the expected location.
+    """
+
+    def folder_location_fixer() -> None:
+        from papis.document import move
+
+        folder = doc.get_main_folder()
+        expected = get_expected_folder(doc)
+        if folder is None or expected is None:
+            return
+
+        if os.path.realpath(folder) == os.path.realpath(expected):
+            return
+
+        logger.info("[FIX] Moving document from '%s' to '%s'.", folder, expected)
+        os.makedirs(os.path.dirname(expected), exist_ok=True)
+        move(doc, expected)
+
+    folder = doc.get_main_folder()
+    expected = get_expected_folder(doc)
+    if folder is None or expected is None:
+        return []
+
+    folder = os.path.realpath(folder)
+    if folder == expected:
+        return []
+
+    # NOTE: accept folders that only differ by a uniqueness suffix (see
+    # 'papis.paths.get_document_unique_folder')
+    if (os.path.dirname(folder) == os.path.dirname(expected)
+            and os.path.basename(folder).startswith(
+                f"{os.path.basename(expected)}-")):
+        return []
+
+    return [make_error(doc, FOLDER_LOCATION_CHECK_NAME,
+                       msg=(f"Document folder '{folder}' does not match the "
+                            f"expected location '{expected}'"),
+                       fix_action=folder_location_fixer,
+                       payload="folder")]
+
+
 register_check(FILES_CHECK_NAME, files_check)
 register_check(KEYS_MISSING_CHECK_NAME, keys_missing_check)
 register_check(DUPLICATED_KEYS_NAME, duplicated_keys_check)
@@ -1133,6 +1457,11 @@ register_check(HTML_CODES_CHECK_NAME, html_codes_check)
 register_check(HTML_TAGS_CHECK_NAME, html_tags_check)
 register_check(KEY_TYPE_CHECK_NAME, key_type_check)
 register_check(STRING_CLEANER_CHECK_NAME, string_cleaner_check)
+register_check(REF_FORMAT_CHECK_NAME, ref_format_check)
+register_check(NOTES_MISSING_CHECK_NAME, notes_missing_check)
+register_check(NOTES_NAME_CHECK_NAME, notes_name_check)
+register_check(FRONTMATTER_SYNC_CHECK_NAME, frontmatter_sync_check)
+register_check(FOLDER_LOCATION_CHECK_NAME, folder_location_check)
 
 DEPRECATED_CHECK_NAMES = {
     "keys-exist": "keys-missing",

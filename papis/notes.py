@@ -136,6 +136,44 @@ def dump_frontmatter(metadata: dict[str, Any], body: str) -> str:
     return f"---\n{fm}---\n{body}"
 
 
+def get_frontmatter_update(doc: Document,
+                           metadata: dict[str, Any]) -> tuple[dict[str, Any], bool]:
+    """Compute the synced frontmatter for the notes of *doc*.
+
+    This applies the :confval:`notes-frontmatter-keys` (including any
+    ``frontmatter_key=document_key`` mappings) and the
+    :confval:`notes-frontmatter-tag-prefix` to the existing frontmatter
+    *metadata* without modifying it.
+
+    :param metadata: the current frontmatter of the notes file for *doc*.
+    :returns: a tuple ``(new_metadata, changed)`` of the updated frontmatter
+        and a flag denoting whether it differs from *metadata*.
+    """
+    keys = papis.config.getlist("notes-frontmatter-keys")
+    tag_prefix = papis.config.getstring("notes-frontmatter-tag-prefix")
+
+    new_metadata = dict(metadata)
+
+    changed = False
+    for key in keys:
+        fm_key, _, doc_key = key.partition("=")
+        doc_key = doc_key or fm_key
+
+        value = doc.get(doc_key)
+        if doc_key == "tags" and tag_prefix and isinstance(value, list):
+            value = [f"{tag_prefix}{tag}" for tag in value]
+
+        if value is not None:
+            if new_metadata.get(fm_key) != value:
+                new_metadata[fm_key] = value
+                changed = True
+        elif fm_key in new_metadata:
+            del new_metadata[fm_key]
+            changed = True
+
+    return new_metadata, changed
+
+
 def update_notes_frontmatter(doc: Document) -> bool:
     """Sync document metadata into the YAML frontmatter of its notes file.
 
@@ -171,25 +209,7 @@ def update_notes_frontmatter(doc: Document) -> bool:
         content = fd.read()
 
     metadata, body = parse_frontmatter(content)
-
-    tag_prefix = papis.config.getstring("notes-frontmatter-tag-prefix")
-
-    changed = False
-    for key in keys:
-        fm_key, _, doc_key = key.partition("=")
-        doc_key = doc_key or fm_key
-
-        value = doc.get(doc_key)
-        if doc_key == "tags" and tag_prefix and isinstance(value, list):
-            value = [f"{tag_prefix}{tag}" for tag in value]
-
-        if value is not None:
-            if metadata.get(fm_key) != value:
-                metadata[fm_key] = value
-                changed = True
-        elif fm_key in metadata:
-            del metadata[fm_key]
-            changed = True
+    metadata, changed = get_frontmatter_update(doc, metadata)
 
     if not changed:
         return False
