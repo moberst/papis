@@ -144,6 +144,12 @@ def update_notes_frontmatter(doc: Document) -> bool:
     preserved. The sync is gated behind the :confval:`notes-frontmatter-sync`
     configuration option.
 
+    Entries in :confval:`notes-frontmatter-keys` of the form
+    ``frontmatter_key=document_key`` write the value of *document_key* under
+    *frontmatter_key* (e.g. ``id=ref`` mirrors the document reference into an
+    ``id`` frontmatter key). Tag values (taken from the ``tags`` document key)
+    are prefixed with :confval:`notes-frontmatter-tag-prefix` when written.
+
     :param doc: the document whose notes should be updated.
     :returns: *True* if the notes file was modified, *False* otherwise.
     """
@@ -166,15 +172,23 @@ def update_notes_frontmatter(doc: Document) -> bool:
 
     metadata, body = parse_frontmatter(content)
 
+    tag_prefix = papis.config.getstring("notes-frontmatter-tag-prefix")
+
     changed = False
     for key in keys:
-        value = doc.get(key)
+        fm_key, _, doc_key = key.partition("=")
+        doc_key = doc_key or fm_key
+
+        value = doc.get(doc_key)
+        if doc_key == "tags" and tag_prefix and isinstance(value, list):
+            value = [f"{tag_prefix}{tag}" for tag in value]
+
         if value is not None:
-            if metadata.get(key) != value:
-                metadata[key] = value
+            if metadata.get(fm_key) != value:
+                metadata[fm_key] = value
                 changed = True
-        elif key in metadata:
-            del metadata[key]
+        elif fm_key in metadata:
+            del metadata[fm_key]
             changed = True
 
     if not changed:

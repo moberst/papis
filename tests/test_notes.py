@@ -324,3 +324,110 @@ def test_update_notes_frontmatter_removes_cleared_key(
 
     metadata, _ = parse_frontmatter(content)
     assert "ref" not in metadata
+
+
+def test_update_notes_frontmatter_tag_prefix(
+    tmp_library: TemporaryLibrary,
+) -> None:
+    papis.config.set("notes-frontmatter-sync", "True")
+    papis.config.set("notes-frontmatter-tag-prefix", "topic/")
+
+    db = papis.database.get()
+    (doc,) = db.query_dict({"author": "Krishnamurti"})
+    doc["tags"] = ["philosophy", "free-will"]
+
+    notespath = os.path.join(doc.get_main_folder() or "", "notes.md")
+    doc["notes"] = "notes.md"
+    with open(notespath, "w", encoding="utf-8") as fd:
+        fd.write("Notes.\n")
+
+    result = update_notes_frontmatter(doc)
+    assert result is True
+
+    with open(notespath, encoding="utf-8") as fd:
+        content = fd.read()
+
+    metadata, _ = parse_frontmatter(content)
+    # Frontmatter tags are prefixed, document tags are unchanged
+    assert metadata["tags"] == ["topic/philosophy", "topic/free-will"]
+    assert doc["tags"] == ["philosophy", "free-will"]
+
+
+def test_update_notes_frontmatter_tag_prefix_idempotent(
+    tmp_library: TemporaryLibrary,
+) -> None:
+    papis.config.set("notes-frontmatter-sync", "True")
+    papis.config.set("notes-frontmatter-tag-prefix", "topic/")
+
+    db = papis.database.get()
+    (doc,) = db.query_dict({"author": "Krishnamurti"})
+    doc["tags"] = ["philosophy"]
+
+    notespath = os.path.join(doc.get_main_folder() or "", "notes.md")
+    doc["notes"] = "notes.md"
+    with open(notespath, "w", encoding="utf-8") as fd:
+        fd.write("Notes.\n")
+
+    update_notes_frontmatter(doc)
+
+    # A second sync must not see the prefixed tags as a change (no oscillation)
+    result = update_notes_frontmatter(doc)
+    assert result is False
+
+    with open(notespath, encoding="utf-8") as fd:
+        content = fd.read()
+
+    metadata, _ = parse_frontmatter(content)
+    assert metadata["tags"] == ["topic/philosophy"]
+
+
+def test_update_notes_frontmatter_key_mapping(
+    tmp_library: TemporaryLibrary,
+) -> None:
+    papis.config.set("notes-frontmatter-sync", "True")
+    papis.config.set("notes-frontmatter-keys", '["title", "ref", "id=ref"]')
+
+    db = papis.database.get()
+    (doc,) = db.query_dict({"author": "Krishnamurti"})
+    doc["ref"] = "krishnamurti1969-ab"
+
+    notespath = os.path.join(doc.get_main_folder() or "", "notes.md")
+    doc["notes"] = "notes.md"
+    with open(notespath, "w", encoding="utf-8") as fd:
+        fd.write("Notes.\n")
+
+    result = update_notes_frontmatter(doc)
+    assert result is True
+
+    with open(notespath, encoding="utf-8") as fd:
+        content = fd.read()
+
+    metadata, _ = parse_frontmatter(content)
+    # 'id' mirrors the document 'ref'
+    assert metadata["id"] == "krishnamurti1969-ab"
+    assert metadata["ref"] == "krishnamurti1969-ab"
+
+
+def test_update_notes_frontmatter_key_mapping_removes_cleared(
+    tmp_library: TemporaryLibrary,
+) -> None:
+    papis.config.set("notes-frontmatter-sync", "True")
+    papis.config.set("notes-frontmatter-keys", '["id=ref"]')
+
+    db = papis.database.get()
+    (doc,) = db.query_dict({"author": "Krishnamurti"})
+    doc.pop("ref", None)
+
+    notespath = os.path.join(doc.get_main_folder() or "", "notes.md")
+    doc["notes"] = "notes.md"
+    with open(notespath, "w", encoding="utf-8") as fd:
+        fd.write("---\nid: stale_ref\n---\nNotes.\n")
+
+    result = update_notes_frontmatter(doc)
+    assert result is True
+
+    with open(notespath, encoding="utf-8") as fd:
+        content = fd.read()
+
+    metadata, _ = parse_frontmatter(content)
+    assert "id" not in metadata
