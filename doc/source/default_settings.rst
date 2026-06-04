@@ -627,6 +627,27 @@ Edit options
 
         notes-frontmatter-keys = ["title", "author", "year", "tags", "ref"]
 
+    An entry of the form ``frontmatter_key=document_key`` writes the value of
+    *document_key* into the frontmatter under *frontmatter_key*. For example,
+    ``id=ref`` mirrors the document reference into an ``id`` frontmatter key
+    (as used by note-taking tools such as Obsidian).
+
+    .. code:: ini
+
+        notes-frontmatter-keys = ["title", "author", "year", "tags", "ref", "id=ref"]
+
+.. papis-config:: notes-frontmatter-tag-prefix
+
+    A prefix added to each tag when syncing the ``tags`` key into the YAML
+    frontmatter of note files. This can be used to namespace the document tags
+    in note-taking tools, e.g. Obsidian, where a prefix such as ``topic/``
+    groups all paper tags under a single tag hierarchy. The document metadata
+    itself is not modified, only the frontmatter representation.
+
+    .. code:: ini
+
+        notes-frontmatter-tag-prefix = topic/
+
 Doctor options
 --------------
 

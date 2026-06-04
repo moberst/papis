@@ -126,6 +126,7 @@ settings: dict[str, Any] = {
     "notes-template": "",
     "notes-frontmatter-sync": False,
     "notes-frontmatter-keys": ["title", "author", "year", "tags", "ref"],
+    "notes-frontmatter-tag-prefix": "",
 
     # doctor
     "doctor-default-checks": ["files", "biblatex-required-keys", "bibtex-type", "refs"],
