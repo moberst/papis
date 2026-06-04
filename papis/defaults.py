@@ -157,6 +157,10 @@ settings: dict[str, Any] = {
     "notes-frontmatter-keys": ["title", "author", "year", "tags", "ref"],
     "notes-frontmatter-tag-prefix": "",
 
+    # library organization
+    "folder-tag-dirs": [],
+    "folder-default-dir": "",
+
     # doctor
     "doctor-default-checks": ["files", "biblatex-required-keys", "bibtex-type", "refs",
                               "empty-fields"],

@@ -10,7 +10,7 @@ import papis.api
 import papis.document
 
 if TYPE_CHECKING:
-    from papis.testing import TemporaryConfiguration
+    from papis.testing import TemporaryConfiguration, TemporaryLibrary
 
 DOCTOR_RESOURCES = os.path.join(os.path.dirname(__file__), "resources")
 
@@ -644,3 +644,212 @@ def test_empty_fields_check(tmp_config: TemporaryConfiguration) -> None:
 
     errors = empty_fields_check(doc)
     assert not errors
+
+
+def test_get_tag_folder(tmp_config: TemporaryConfiguration) -> None:
+    from papis.paths import get_tag_folder
+
+    doc = papis.document.from_data({
+        "title": "Title",
+        "tags": ["starred", "to-read"],
+        })
+
+    # check: no configuration gives no subfolder
+    assert get_tag_folder(doc) == ""
+
+    # check: last matching tag in the list wins
+    papis.config.set("folder-tag-dirs", ["to-read", "starred"])
+    assert get_tag_folder(doc) == "starred"
+
+    doc["tags"] = ["to-read"]
+    assert get_tag_folder(doc) == "to-read"
+
+    # check: unmatched tags fall back to the default dir
+    doc["tags"] = ["misc"]
+    assert get_tag_folder(doc) == ""
+
+    papis.config.set("folder-default-dir", "all")
+    assert get_tag_folder(doc) == "all"
+
+    # check: the default dir applies without any tag dirs as well
+    papis.config.set("folder-tag-dirs", [])
+    assert get_tag_folder(doc) == "all"
+
+    # check: non-list tags are ignored
+    papis.config.set("folder-tag-dirs", ["to-read"])
+    doc["tags"] = "to-read"
+    assert get_tag_folder(doc) == "all"
+
+
+def test_ref_format_check(tmp_config: TemporaryConfiguration) -> None:
+    from papis.commands.doctor import ref_format_check
+
+    papis.config.set("ref-format", "{doc[author]}{doc[year]}")
+    doc = papis.document.from_data({
+        "author": "sanger",
+        "year": "1977",
+        "ref": "wrong",
+        })
+
+    error, = ref_format_check(doc)
+    assert error.payload == "ref"
+    assert error.fix_action is not None
+
+    error.fix_action()
+    assert doc["ref"] == "sanger1977"
+    assert not ref_format_check(doc)
+
+    # check: documents where the format cannot be filled in are skipped
+    doc = papis.document.from_data({"title": "No author", "ref": "anything"})
+    assert not ref_format_check(doc)
+
+
+def test_notes_missing_check(tmp_library: TemporaryLibrary) -> None:
+    import papis.database
+    from papis.commands.doctor import notes_missing_check
+
+    papis.config.set("notes-name", "notes.md")
+
+    db = papis.database.get()
+    (doc,) = db.query_dict({"author": "Krishnamurti"})
+
+    error, = notes_missing_check(doc)
+    assert error.payload == "notes"
+    assert error.msg == "Notes file is missing"
+    assert error.fix_action is not None
+
+    error.fix_action()
+
+    folder = doc.get_main_folder()
+    assert folder is not None
+    assert doc["notes"] == "notes.md"
+    assert os.path.exists(os.path.join(folder, "notes.md"))
+    assert not notes_missing_check(doc)
+
+    # check: notes key exists, but the file is missing on disk
+    os.remove(os.path.join(folder, "notes.md"))
+    error, = notes_missing_check(doc)
+    assert "not found on disk" in error.msg
+
+
+def test_notes_name_check(tmp_library: TemporaryLibrary) -> None:
+    import papis.database
+    from papis.commands.doctor import notes_name_check
+
+    papis.config.set("notes-name", "mynotes.md")
+
+    db = papis.database.get()
+    (doc,) = db.query_dict({"author": "Krishnamurti"})
+
+    folder = doc.get_main_folder()
+    assert folder is not None
+
+    doc["notes"] = "old.txt"
+    with open(os.path.join(folder, "old.txt"), "w", encoding="utf-8") as fd:
+        fd.write("My notes.\n")
+
+    error, = notes_name_check(doc)
+    assert error.payload == "notes"
+    assert error.fix_action is not None
+
+    error.fix_action()
+
+    # check: the extension of the existing notes file is preserved
+    assert doc["notes"] == "mynotes.txt"
+    assert not os.path.exists(os.path.join(folder, "old.txt"))
+
+    with open(os.path.join(folder, "mynotes.txt"), encoding="utf-8") as fd:
+        assert fd.read() == "My notes.\n"
+
+    assert not notes_name_check(doc)
+
+
+def test_frontmatter_sync_check(tmp_library: TemporaryLibrary) -> None:
+    import papis.database
+    from papis.commands.doctor import frontmatter_sync_check
+    from papis.notes import parse_frontmatter
+
+    db = papis.database.get()
+    (doc,) = db.query_dict({"author": "Krishnamurti"})
+
+    folder = doc.get_main_folder()
+    assert folder is not None
+
+    doc["notes"] = "notes.md"
+    notespath = os.path.join(folder, "notes.md")
+    with open(notespath, "w", encoding="utf-8") as fd:
+        fd.write("Body.\n")
+
+    # check: skipped when the sync is disabled
+    assert not frontmatter_sync_check(doc)
+
+    papis.config.set("notes-frontmatter-sync", "True")
+    error, = frontmatter_sync_check(doc)
+    assert error.payload == "notes"
+    assert error.fix_action is not None
+
+    error.fix_action()
+    assert not frontmatter_sync_check(doc)
+
+    with open(notespath, encoding="utf-8") as fd:
+        metadata, body = parse_frontmatter(fd.read())
+
+    assert metadata["title"] == doc["title"]
+    assert body == "Body.\n"
+
+
+def test_folder_location_check(tmp_library: TemporaryLibrary) -> None:
+    import papis.database
+    from papis.commands.doctor import folder_location_check, get_expected_folder
+
+    db = papis.database.get()
+    (doc,) = db.query_dict({"author": "Krishnamurti"})
+
+    papis.config.set("add-folder-name", "{doc[author]}-{doc[year]}")
+    papis.config.set("folder-default-dir", "all")
+    papis.config.set("folder-tag-dirs", ["to-read"])
+
+    expected = get_expected_folder(doc)
+    assert expected is not None
+    assert os.path.basename(os.path.dirname(expected)) == "all"
+
+    error, = folder_location_check(doc)
+    assert error.payload == "folder"
+    assert error.fix_action is not None
+
+    error.fix_action()
+
+    folder = doc.get_main_folder()
+    assert folder is not None
+    assert os.path.realpath(folder) == expected
+    assert not folder_location_check(doc)
+
+    # check: tag dirs take precedence over the default dir
+    doc["tags"] = ["to-read"]
+    error, = folder_location_check(doc)
+    assert error.fix_action is not None
+    error.fix_action()
+
+    folder = doc.get_main_folder()
+    assert folder is not None
+    assert os.path.basename(os.path.dirname(folder)) == "to-read"
+    assert not folder_location_check(doc)
+
+    # check: an explicit 'folder_name' key takes precedence over the format
+    doc["folder_name"] = "Custom Folder"
+    error, = folder_location_check(doc)
+    assert error.fix_action is not None
+    error.fix_action()
+
+    folder = doc.get_main_folder()
+    assert folder is not None
+    assert os.path.basename(folder) == "custom-folder"
+    assert not folder_location_check(doc)
+
+    # check: folders that only differ by a uniqueness suffix are accepted
+    from papis.document import move
+
+    folder = doc.get_main_folder()
+    assert folder is not None
+    move(doc, f"{folder}-a")
+    assert not folder_location_check(doc)

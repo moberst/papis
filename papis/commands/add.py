@@ -251,6 +251,14 @@ def run(paths: list[str],
 
     if subfolder:
         base_path = os.path.join(base_path, subfolder)
+    else:
+        # organize the document into a tag-based subfolder (see the
+        # 'folder-tag-dirs' and 'folder-default-dir' settings)
+        from papis.paths import get_tag_folder
+
+        tag_folder = get_tag_folder(tmp_document)
+        if tag_folder:
+            base_path = os.path.join(base_path, tag_folder)
 
     from papis.paths import get_document_unique_folder
 
