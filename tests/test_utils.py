@@ -3,12 +3,51 @@ from __future__ import annotations
 import os
 import sys
 import tempfile
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
 if TYPE_CHECKING:
     from papis.testing import TemporaryConfiguration
+
+
+def test_get_session_timeout(tmp_config: TemporaryConfiguration,
+                             monkeypatch: pytest.MonkeyPatch) -> None:
+    import requests
+
+    import papis.config
+    from papis.utils import get_session
+
+    captured: dict[str, Any] = {}
+
+    def fake_request(self: requests.Session,
+                     *args: Any, **kwargs: Any) -> requests.Response:
+        captured.clear()
+        captured.update(kwargs)
+        return requests.Response()
+
+    monkeypatch.setattr(requests.Session, "request", fake_request)
+
+    # default timeout is applied
+    with get_session() as session:
+        session.get("https://example.com")
+        assert captured["timeout"] == 30
+
+        # an explicit timeout is not overwritten
+        session.get("https://example.com", timeout=5)
+        assert captured["timeout"] == 5
+
+    # the timeout can be configured
+    papis.config.set("network-timeout", "7")
+    with get_session() as session:
+        session.get("https://example.com")
+        assert captured["timeout"] == 7
+
+    # setting it to zero disables the timeout
+    papis.config.set("network-timeout", "0")
+    with get_session() as session:
+        session.get("https://example.com")
+        assert captured["timeout"] is None
 
 
 def test_get_cache_home(tmp_config: TemporaryConfiguration,
