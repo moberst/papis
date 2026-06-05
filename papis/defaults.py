@@ -44,6 +44,7 @@ settings: dict[str, Any] = {
     "dir-umask": 0o755,
     "use-git": False,
     "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_3)",
+    "network-timeout": 30,
     "scripts-short-help-regex": ".*papis-short-help: *(.*)",
     "info-name": "info.yaml",
     "doc-url-key-name": "doc_url",

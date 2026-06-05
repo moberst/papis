@@ -40,12 +40,25 @@ def get_session() -> requests.Session:
 
     This session has the expected ``User-Agent`` (see
     :confval:`user-agent`), proxy (see
-    :confval:`downloader-proxy`) and other settings used
+    :confval:`downloader-proxy`), timeout (see
+    :confval:`network-timeout`) and other settings used
     for ``papis``. It is recommended to use it instead of creating a
     :class:`requests.Session` at every call site.
     """
     import requests
-    session = requests.Session()
+
+    timeout = papis.config.getint("network-timeout")
+    if timeout is not None and timeout <= 0:
+        timeout = None
+
+    class TimeoutSession(requests.Session):
+        """A session that applies a default timeout to all requests."""
+
+        def request(self, *args: Any, **kwargs: Any) -> requests.Response:
+            kwargs.setdefault("timeout", timeout)
+            return super().request(*args, **kwargs)
+
+    session: requests.Session = TimeoutSession()
     session.headers.update({
         "User-Agent": papis.config.getstring("user-agent"),
     })

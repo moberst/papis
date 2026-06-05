@@ -44,6 +44,14 @@ General settings
     `User agent <https://en.wikipedia.org/wiki/User_agent>`__ used by Papis
     whenever querying information from external sources.
 
+.. papis-config:: network-timeout
+
+    Timeout (in seconds) used by Papis whenever querying information from
+    external sources. This applies separately to connecting and to reading
+    from an established connection (see the ``requests``
+    `documentation <https://requests.readthedocs.io/en/latest/user/advanced/#timeouts>`__).
+    Set to ``0`` to disable the timeout and wait indefinitely.
+
 .. papis-config:: scripts-short-help-regex
 
     This is the format of the short help indicator in external Papis
