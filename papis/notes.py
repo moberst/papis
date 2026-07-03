@@ -10,6 +10,16 @@ from typing import TYPE_CHECKING, Any
 import papis.config
 import papis.logging
 
+# NOTE: mirror papis.yaml's loader/dumper selection, preferring the faster C
+# variants when available (used for parsing/dumping notes frontmatter strings).
+try:
+    from yaml import CSafeDumper as Dumper, CSafeLoader as Loader
+except ImportError:
+    from yaml import (  # type: ignore[assignment]
+        SafeDumper as Dumper,
+        SafeLoader as Loader,
+    )
+
 if TYPE_CHECKING:
     from papis.document import Document
 
@@ -100,7 +110,6 @@ def parse_frontmatter(content: str) -> tuple[dict[str, Any], str]:
     import yaml
 
     try:
-        from papis.yaml import Loader
         metadata = yaml.load(match.group(1), Loader=Loader)
     except Exception as exc:
         logger.warning("Failed to parse YAML frontmatter in notes file.",
@@ -126,8 +135,6 @@ def dump_frontmatter(metadata: dict[str, Any], body: str) -> str:
         return body
 
     import yaml
-
-    from papis.yaml import Dumper
 
     fm = yaml.dump(metadata,
                    Dumper=Dumper,
