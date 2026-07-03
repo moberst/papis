@@ -1242,7 +1242,7 @@ def get_expected_notes_name(doc: Document) -> str:
         can be generated from the configured format.
     """
     from papis.format import format as format_pattern
-    from papis.paths import normalize_path
+    from papis.paths import normalize_path_part
 
     try:
         pattern = papis.config.getformatpattern("notes-name")
@@ -1259,7 +1259,7 @@ def get_expected_notes_name(doc: Document) -> str:
         _, old_ext = os.path.splitext(notes)
         ext = old_ext or ext
 
-    return normalize_path(base) + ext
+    return normalize_path_part(base) + ext
 
 
 def notes_name_check(doc: Document) -> list[Error]:
@@ -1379,7 +1379,7 @@ def get_expected_folder(doc: Document) -> str | None:
         get_document_folder,
         get_tag_folder,
         is_relative_to,
-        normalize_path,
+        normalize_path_part,
     )
 
     folder = doc.get_main_folder()
@@ -1387,17 +1387,15 @@ def get_expected_folder(doc: Document) -> str | None:
         return None
 
     folder = os.path.realpath(folder)
-    lib_dirs = [os.path.realpath(os.path.expanduser(d))
-                for d in papis.config.get_lib_dirs()]
-    libdir = next((d for d in lib_dirs if is_relative_to(folder, d)), None)
-    if libdir is None:
+    libdir = os.path.realpath(os.path.expanduser(papis.config.get_lib().path))
+    if not is_relative_to(folder, libdir):
         return None
 
     parent = os.path.join(libdir, get_tag_folder(doc))
 
     folder_name = doc.get("folder_name")
     if folder_name:
-        return os.path.join(parent, normalize_path(str(folder_name)))
+        return os.path.join(parent, normalize_path_part(str(folder_name)))
 
     return get_document_folder(doc, parent)
 

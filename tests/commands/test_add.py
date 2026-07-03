@@ -363,7 +363,7 @@ def test_add_tag_folder(tmp_library: TemporaryLibrary) -> None:
     import papis.database
 
     db = papis.database.get()
-    libdir = papis.config.get_lib_dirs()[0]
+    libdir = papis.config.get_lib().path
 
     # check: unmatched tags go to the default dir
     doc, = db.query_dict({"author": "Evangelista"})

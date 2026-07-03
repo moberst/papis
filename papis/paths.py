@@ -274,7 +274,7 @@ def get_tag_folder(doc: DocumentLike) -> str:
             if tag in tags:
                 subfolder = tag
 
-    return normalize_path(subfolder) if subfolder else ""
+    return normalize_path_part(subfolder) if subfolder else ""
 
 
 def get_document_folder(
